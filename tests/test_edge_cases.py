@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from conftest import (
-    PROJECT,
+    SKILL_DIR,
     VariedClient,
     dirs,
     ident,
@@ -23,8 +23,6 @@ import generate
 import imaging
 import rank
 from rank import Face, PhotoInfo
-
-SKILL_DIR = PROJECT / ".claude" / "skills" / "linkedin-headshot"
 
 
 def strict(text: str):

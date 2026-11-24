@@ -1,9 +1,26 @@
+# /// script
+# requires-python = ">=3.13,<3.15"
+# dependencies = [
+#     "openai>=3",
+#     "pillow>=11",
+#     "pillow-heif>=1.0",
+#     "numpy>=2",
+#     # insightface's pretrained buffalo_l models are non-commercial research use
+#     # only; this skill's MIT licence does not cover them (see NOTICE.md).
+#     "insightface>=2.1",
+#     "onnxruntime>=1.20",
+#     "scikit-image<2.2",
+# ]
+# ///
 """Photo split, pre-flight check and likeness ranking, all local. Owns insightface.
 
-Usage:
-    uv run --extra rank rank.py split              # photos/inbox -> photos/refs + photos/holdout
-    uv run --extra rank rank.py check              # free pre-flight on refs and holdout
-    uv run --extra rank rank.py rank out/<ts>
+Usage (SKILL = this skill's folder; WS = the workspace holding photos/ and out/):
+    uv run SKILL/scripts/rank.py --workspace WS split      # photos/inbox -> refs + holdout
+    uv run SKILL/scripts/rank.py --workspace WS check      # free pre-flight on refs and holdout
+    uv run SKILL/scripts/rank.py --workspace WS rank out/<ts>
+
+--workspace defaults to $HEADSHOT_WORKSPACE, then the current folder; the skill
+folder itself, / and $HOME are refused. Relative paths resolve against it.
 
 Every command takes --json: one JSON object on stdout (with "error" and
 "exit_code" on failure), human text and model-download output on stderr.
@@ -29,10 +46,12 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageFilter
 
+# An installed skill folder must stay byte-identical, so sibling modules leave no __pycache__.
+sys.dont_write_bytecode = True
+
 import cli
 import imaging
-
-ROOT = Path(__file__).resolve().parent
+import workspace
 
 LARGE_FACE_RATIO = 0.25  # a second face this fraction of the largest (by area) counts
 MIN_FACE_PX = 256  # warn below this face width in the (resized) photo
@@ -570,6 +589,7 @@ def cmd_split(root: Path, embed, say) -> tuple[int, dict]:
     plan = [(p, f"refs/{i:02d}_{p.name}") for i, (p, _, _) in enumerate(ref_picks, 1)]
     plan += [(p, f"holdout/{p.name}") for p, _, _ in usable if p not in ref_paths]
     remove_owned(photos, manifest)
+    workspace.protect(photos)
     for sub in ("refs", "holdout"):
         (photos / sub).mkdir(parents=True, exist_ok=True)
     # The manifest is written before copying, so a crash mid-copy leaves only owned files.
@@ -917,8 +937,13 @@ def root_drift(
     return {"root_run": root_run, **result}
 
 
-def main(argv=None, *, embed=None, root: Path = ROOT) -> int:
+def main(argv=None, *, embed=None, root: Path | None = None) -> int:
+    """root (tests) overrides --workspace / $HEADSHOT_WORKSPACE / cwd."""
     p = cli.JsonArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    ws_help = (
+        f"folder holding photos/ and out/ (default ${workspace.ENV_VAR}, then the current folder)"
+    )
+    p.add_argument("--workspace", metavar="DIR", help=ws_help)
     sub = p.add_subparsers(dest="cmd", required=True)
     cmds = {
         "split": sub.add_parser(
@@ -934,11 +959,24 @@ def main(argv=None, *, embed=None, root: Path = ROOT) -> int:
         c.add_argument(
             "--json", action="store_true", help="one JSON object on stdout, human text on stderr"
         )
+        # Also accepted after the subcommand; SUPPRESS keeps it from clobbering the top-level one.
+        c.add_argument("--workspace", metavar="DIR", default=argparse.SUPPRESS, help=ws_help)
     try:
         args = cli.parse_args(p, argv)
     except cli.UsageError as exc:
         print(f"error: {exc}", file=sys.stderr)
         print(cli.dumps({"exit_code": 2, "ok": False, "error": str(exc)}))
+        return 2
+    try:
+        if root is None:
+            root = workspace.resolve(args.workspace)
+        else:
+            root = Path(root)
+            workspace.validate(root)
+    except workspace.WorkspaceError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        if args.json:
+            print(cli.dumps({"exit_code": 2, "ok": False, "error": str(exc)}))
         return 2
     if embed is None:
         embed = InsightFaceEmbedder()
@@ -949,11 +987,11 @@ def main(argv=None, *, embed=None, root: Path = ROOT) -> int:
     try:
         with cli.stdout_to_stderr(args.json):
             if args.cmd == "check":
-                code, payload = cmd_check(Path(root), embed, say)
+                code, payload = cmd_check(root, embed, say)
             elif args.cmd == "split":
-                code, payload = cmd_split(Path(root), embed, say)
+                code, payload = cmd_split(root, embed, say)
             else:
-                code, payload = cmd_rank(Path(root), embed, args.out_dir, say)
+                code, payload = cmd_rank(root, embed, args.out_dir, say)
     except (RankError, imaging.ImagingError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         code, payload = 2, {"ok": False, "error": str(exc), **getattr(exc, "extra", {})}
@@ -961,7 +999,7 @@ def main(argv=None, *, embed=None, root: Path = ROOT) -> int:
         print(f"error: {cli.unexpected(exc)}", file=sys.stderr)
         code, payload = 4, {"ok": False, "error": cli.unexpected(exc)}
     if args.json:
-        print(cli.dumps({"exit_code": code, **payload}))
+        print(cli.dumps({"exit_code": code, **payload, "workspace": str(root)}))
     return code
 
 

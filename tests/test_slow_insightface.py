@@ -1,4 +1,4 @@
-"""Opt-in: HEADSHOT_SLOW=1 uv run --extra rank pytest -m slow
+"""Opt-in: HEADSHOT_SLOW=1 uv run pytest -m slow
 
 Checks that our Pillow->BGR path matches cv2 on insightface's bundled sample.
 Needs the buffalo_l model (downloads ~289 MB on first use). Set

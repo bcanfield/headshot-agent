@@ -5,7 +5,7 @@ import re
 from types import SimpleNamespace
 
 import pytest
-from conftest import OK, PROJECT, TEMPLATE, FakeClient, mock_client, png_bytes, run
+from conftest import OK, SCRIPTS, TEMPLATE, FakeClient, mock_client, png_bytes, run, runs
 
 import generate
 
@@ -220,7 +220,7 @@ def test_successful_run_writes_outputs_and_run_json(project):
     assert [f[0] for f in call["image"]] == ["ref1.jpg", "ref2.jpg", "ref3.jpg"]
     assert all(f[2] == "image/jpeg" for f in call["image"])
 
-    [run_dir] = (project / "out").iterdir()
+    [run_dir] = runs(project)
     assert sorted(p.name for p in run_dir.iterdir()) == [
         "01.png",
         "02.png",
@@ -240,7 +240,7 @@ def test_successful_run_writes_outputs_and_run_json(project):
 def test_from_reuses_look_and_overrides(project):
     c = FakeClient()
     assert run(project, *OK, client=c) == 0
-    [first] = (project / "out").iterdir()
+    [first] = runs(project)
     assert (
         run(project, *OK, "--from", f"out/{first.name}", "--background", "light blue", client=c)
         == 0
@@ -252,7 +252,7 @@ def test_from_reuses_look_and_overrides(project):
 def test_from_refuses_changed_refs(project):
     c = FakeClient()
     assert run(project, *OK, client=c) == 0
-    [first] = (project / "out").iterdir()
+    [first] = runs(project)
     from PIL import Image
 
     Image.new("RGB", (64, 48), (1, 2, 3)).save(project / "photos" / "refs" / "IMG_1.jpg")
@@ -272,7 +272,7 @@ def status_error(code=500):
 def test_error_run_recorded_and_not_duplicate(project):
     c = FakeClient(fail=status_error())
     assert run(project, *OK, client=c) == 4
-    [run_dir] = (project / "out").iterdir()
+    [run_dir] = runs(project)
     meta = json.loads((run_dir / "run.json").read_text())
     assert meta["status"] == "error" and meta["possibly_billed"] is False
     assert run(project, *OK, client=FakeClient()) == 0  # an HTTP refusal does not block
@@ -321,7 +321,7 @@ def test_real_client_multipart_shape(project, monkeypatch):
     assert imgs == [("image[]", f"ref{i}.jpg", "image/jpeg") for i in (1, 2, 3)]
     assert not any(n[0] in ("input_fidelity", "response_format") for n in names)
     assert b"IMG_" not in seen["body"]
-    [run_dir] = (project / "out").iterdir()
+    [run_dir] = runs(project)
     assert json.loads((run_dir / "run.json").read_text())["request_id"] == "req_mock"
 
 
@@ -352,7 +352,7 @@ def test_error_mapping(project, monkeypatch, capsys, status, code, needle):
 
 def test_no_insightface_import_in_generate_or_imaging():
     for name in ("generate.py", "imaging.py"):
-        tree = ast.parse((PROJECT / name).read_text())
+        tree = ast.parse((SCRIPTS / name).read_text())
         for node in ast.walk(tree):
             mods = []
             if isinstance(node, ast.Import):
@@ -366,7 +366,7 @@ def test_no_insightface_import_in_generate_or_imaging():
 
 
 def run_dirs(project):
-    return sorted((project / "out").iterdir())
+    return sorted(runs(project))
 
 
 def test_c1m1_interrupted_pending_and_timeout_block_identical_rerun(project):
@@ -503,7 +503,7 @@ def test_v1h1_max_cost_must_be_finite_positive_and_capped(project, capsys, bad):
 
 
 def test_v1h1_gate_compares_with_not_le(project):
-    src = (PROJECT / "generate.py").read_text()
+    src = (SCRIPTS / "generate.py").read_text()
     assert "not (hi <= args.max_cost)" in src
     c = FakeClient()
     assert run(project, "--max-cost", "10", client=c) == 0 and len(c.calls) == 1

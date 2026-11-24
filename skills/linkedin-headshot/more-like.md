@@ -1,6 +1,6 @@
 # More like this
 
-Every round after the first. `generate.py --more-like <run_dir>/<NN>.png` re-sends the original photos as images 1-N and the pick as one more image, labelled as a scene reference only: framing, pose, outfit, background and lighting. The face is redrawn from the photos every round, so it varies a little.
+Every round after the first. `generate.py ...` and `rank.py ...` are the short forms defined at the top of SKILL.md: run the full `uv run <skill-dir>/scripts/... --workspace <ws>` form. `generate.py --more-like <run_dir>/<NN>.png` re-sends the original photos as images 1-N and the pick as one more image, labelled as a scene reference only: framing, pose, outfit, background and lighting. The face is redrawn from the photos every round, so it varies a little.
 
 **Resample**: new samples of one run's look from the original photos, with no pick: `--from <run_dir>` plus any field changes, never `--more-like`. `<run_dir>` is the run of the candidate in question, so every look field the human approved so far carries over. When its dry run reports `duplicate_of` with `duplicate_finished: true` (a resample with no field change of a run made without a pick), pass `--again`: the result is new samples. Run a resample through steps 3-7 below with `--from <run_dir>` in place of `--more-like <file>`.
 
@@ -46,7 +46,7 @@ Expression moves along the ladder in SKILL.md step 2. If the run's current expre
 Route 4 rows share one reason: the model cannot change the face or body and keep the likeness, and LinkedIn wants a photo that looks like them.
 
 ### 3. Dry run
-Done when `uv run generate.py --dry-run --json --more-like <file> [--<field> "<phrase>" ...] -n <n> --quality <q>` (or the resample form) exits 0 for every run size you will offer.
+Done when `generate.py --dry-run --json --more-like <file> [--<field> "<phrase>" ...] -n <n> --quality <q>` (or the resample form) exits 0 for every run size you will offer.
 
 Recommend "4 at high" for a pick; when the pick's run was `low`, recommend at least medium. Dry-run each option to get its `estimate_usd`.
 
@@ -54,7 +54,7 @@ Read the output:
 - `depth_warning` (a pick of a pick): the pick passed the drift gate, so keep it and recommend the `--more-like` run. A resample of the pick's run may be one more option, never the recommended one.
 - `duplicate_of` with `duplicate_finished: true`: those images already exist. For a route 3 resample, add `--again` without asking. Otherwise tell the human in plain text, before the question, that you can reopen them for free, and make each paid option an `--again` one labelled "new samples".
 - Exit 2 explains itself in `error`. The common ones:
-  - "rank first" or "re-rank" (`stale_rankings`): run `uv run --extra rank rank.py rank out/<run> --json` for each run named, then retry. Rankings move with the held-back photos, so a stale one is redone, never reused.
+  - "rank first" or "re-rank" (`stale_rankings`): run `rank.py rank out/<run> --json` for each run named, then retry. Rankings move with the held-back photos, so a stale one is redone, never reused.
   - "drifted" (with `pick_score` and `root_median`): the pick's face has moved away from the human's photos. Say so, and offer a resample of the pick's run with the same field change.
   - "more than one large face": that image is unscored; ask for another pick.
   - "photos/refs no longer matches": the photo set changed; start a fresh run from look.toml (SKILL.md step 3).
@@ -75,7 +75,7 @@ The approval covers this one run only.
 ### 5. Run
 Done when the paid run has finished and the human has heard the real cost against the estimate.
 
-Run `uv run generate.py --json --more-like <file> [--<field> "<phrase>" ...] -n <n> --quality <q> --max-cost <the human's figure>` (or the resample form; `--again` only where step 3 says so) exactly as in SKILL.md step 4.3-4.7.
+Run `generate.py --json --more-like <file> [--<field> "<phrase>" ...] -n <n> --quality <q> --max-cost <the human's figure>` (or the resample form; `--again` only where step 3 says so) exactly as in SKILL.md step 4.3-4.7.
 
 ### 6. Rank
 Done when SKILL.md step 5 has run on the new run.

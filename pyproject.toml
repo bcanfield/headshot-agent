@@ -5,17 +5,16 @@ description = "AI LinkedIn headshot pipeline: generate with OpenAI, rank locally
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13,<3.15"
+# Dev environment only: the skill's scripts carry their own PEP 723 metadata
+# (skills/linkedin-headshot/scripts/*.py) and lockfiles. These dependencies are
+# the union of those blocks, so `uv run pytest` has everything; a test keeps them equal.
 dependencies = [
     "openai>=3",
     "pillow>=11",
     "pillow-heif>=1.0",
     "numpy>=2",
-]
-
-[project.optional-dependencies]
-# insightface's pretrained buffalo_l models are non-commercial research use only;
-# the MIT licence of this repo does not cover them (see NOTICE.md).
-rank = [
+    # insightface's pretrained buffalo_l models are non-commercial research use only;
+    # the MIT licence of this repo does not cover them (see NOTICE.md).
     "insightface>=2.1",
     "onnxruntime>=1.20",
     "scikit-image<2.2",
@@ -29,8 +28,10 @@ package = false
 
 [tool.ruff]
 line-length = 100
+# The skill's scripts import each other as top-level modules.
+src = [".", "skills/linkedin-headshot/scripts"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ["skills/linkedin-headshot/scripts"]
 testpaths = ["tests"]
 markers = ["slow: needs the insightface model download; run with HEADSHOT_SLOW=1"]

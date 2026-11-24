@@ -1,0 +1,18 @@
+{
+  "name": "headshot-agent",
+  "description": "AI LinkedIn headshot pipeline: OpenAI image edits, ranked locally by likeness",
+  "owner": {
+    "name": "headshot-agent maintainers",
+    "url": "https://github.com/bcanfield"
+  },
+  "plugins": [
+    {
+      "name": "linkedin-headshot",
+      "source": "./skills/linkedin-headshot",
+      "description": "Make a LinkedIn headshot from your own photos",
+      "version": "0.1.0",
+      "license": "MIT",
+      "homepage": "https://github.com/bcanfield/headshot-agent"
+    }
+  ]
+}

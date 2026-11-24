@@ -1,11 +1,24 @@
+# /// script
+# requires-python = ">=3.13,<3.15"
+# dependencies = [
+#     "openai>=3",
+#     "pillow>=11",
+#     "pillow-heif>=1.0",
+#     "numpy>=2",
+# ]
+# ///
 """Generate LinkedIn headshot candidates with OpenAI image edits.
 
-Usage:
-    uv run generate.py --check-key --json        # is OPENAI_API_KEY set? (never shows it)
-    uv run generate.py --dry-run --json          # validate look.toml, show prompt + estimate
-    uv run generate.py --json --max-cost 1.50    # real run, only if the estimate's upper bound <= 1.50
-    uv run generate.py --from out/<ts> --background "light blue" --max-cost 1.50
-    uv run generate.py --more-like out/<ts>/02.png --max-cost 1.50   # resample a pick
+Usage (SKILL = this skill's folder; WS = the workspace holding photos/, out/ and look.toml):
+    uv run SKILL/scripts/generate.py --check-key --json   # is OPENAI_API_KEY set? (never shows it)
+    uv run SKILL/scripts/generate.py --workspace WS --dry-run --json   # validate look.toml, estimate
+    uv run SKILL/scripts/generate.py --workspace WS --json --max-cost 1.50   # real run, only if
+                                                          # the estimate's upper bound <= 1.50
+    ... --from out/<ts> --background "light blue" --max-cost 1.50
+    ... --more-like out/<ts>/02.png --max-cost 1.50   # resample a pick
+
+--workspace defaults to $HEADSHOT_WORKSPACE, then the current folder; the skill
+folder itself, / and $HOME are refused. Relative paths resolve against it.
 
 Exit codes: 0 ok, 2 user/input error, 3 needs spend approval (pass --max-cost),
 4 OpenAI API error or unexpected failure. With --json, one JSON object goes to
@@ -28,6 +41,7 @@ import math
 import os
 import re
 import secrets
+import shlex
 import statistics
 import sys
 import tomllib
@@ -38,10 +52,12 @@ from pathlib import Path
 
 from PIL import Image
 
+# An installed skill folder must stay byte-identical, so sibling modules leave no __pycache__.
+sys.dont_write_bytecode = True
+
 import cli
 import imaging
-
-ROOT = Path(__file__).resolve().parent
+import workspace
 
 DEFAULT_MODEL = "gpt-image-2.6-sunburst"
 SIZE = "1024x1024"
@@ -468,6 +484,7 @@ def new_run_dir(out_root: Path) -> Path:
     stamp = datetime.now().strftime("%Y-%m-%dT%H%M")
     path = out_root / f"{stamp}-{secrets.token_hex(2)}"
     path.mkdir(parents=True, exist_ok=False)
+    workspace.protect(out_root)
     return path
 
 
@@ -491,6 +508,12 @@ def max_cost_arg(text: str) -> float:
 
 def build_parser() -> argparse.ArgumentParser:
     p = cli.JsonArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    p.add_argument(
+        "--workspace",
+        metavar="DIR",
+        help=f"folder holding photos/, out/ and look.toml (default ${workspace.ENV_VAR}, "
+        "then the current folder)",
+    )
     p.add_argument("--model", help=f"default {DEFAULT_MODEL}")
     p.add_argument("-n", type=int, help=f"images to generate, 1-{MAX_N} (default {DEFAULT_N})")
     p.add_argument("--quality", choices=QUALITIES, help=f"default {DEFAULT_QUALITY}")
@@ -557,22 +580,32 @@ def check_key(as_json: bool) -> int:
     return 0
 
 
-def main(argv=None, *, client=None, root: Path = ROOT) -> int:
+def main(argv=None, *, client=None, root: Path | None = None) -> int:
+    """root (tests) overrides --workspace / $HEADSHOT_WORKSPACE / cwd."""
     try:
         args = cli.parse_args(build_parser(), argv)
     except cli.UsageError as exc:
         return fail(2, str(exc), True)
     if args.check_key:
         return check_key(args.json)
+    try:
+        if root is None:
+            root = workspace.resolve(args.workspace)
+        else:
+            root = Path(root)
+            workspace.validate(root)
+    except workspace.WorkspaceError as exc:
+        return fail(2, str(exc), args.json)
+    ws = {"workspace": str(root)}
     result: dict = {}
     try:
         with cli.stdout_to_stderr(args.json):
-            code = _run(args, client, Path(root), result)
-        text = cli.dumps(result) if args.json else None
+            code = _run(args, client, root, result)
+        text = cli.dumps({**result, **ws}) if args.json else None
     except GenerateError as exc:
-        return fail(exc.code, str(exc), args.json, **exc.extra)
+        return fail(exc.code, str(exc), args.json, **exc.extra, **ws)
     except Exception as exc:  # noqa: BLE001 - never a bare traceback in place of the JSON contract
-        return fail(4, cli.unexpected(exc), args.json)
+        return fail(4, cli.unexpected(exc), args.json, **ws)
     if text is not None:
         print(text)
     return code
@@ -925,7 +958,7 @@ def _run(args, client, root: Path, result: dict) -> int:
         )
 
     try:
-        template = (root / "prompt.txt").read_text()
+        template = workspace.PROMPT_PATH.read_text()  # bundled with the skill, never the workspace
     except OSError as exc:
         raise GenerateError(f"cannot read prompt.txt: {exc}") from exc
     prompt = fill_prompt(template, look, len(refs), changed)
@@ -1135,7 +1168,11 @@ def _run(args, client, root: Path, result: dict) -> int:
     if error:
         print(f"error: {error}", file=sys.stderr)
     else:
-        say(f"next: uv run --extra rank rank.py rank out/{run_dir.name}")
+        rank_py = Path(__file__).resolve().with_name("rank.py")
+        say(
+            f"next: uv run {shlex.quote(str(rank_py))} --workspace {shlex.quote(str(root))} "
+            f"rank out/{run_dir.name}"
+        )
     code = 0 if written else 4
     result.update(
         {

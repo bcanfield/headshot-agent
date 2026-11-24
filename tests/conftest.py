@@ -3,7 +3,6 @@ import csv
 import hashlib
 import io
 import json
-import shutil
 import socket
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,6 +16,8 @@ import imaging
 from rank import Face
 
 PROJECT = Path(__file__).resolve().parent.parent
+SKILL_DIR = PROJECT / "skills" / "linkedin-headshot"
+SCRIPTS = SKILL_DIR / "scripts"
 
 # A fixed look for tests, so an agent-written project look.toml never changes results.
 FIXTURE_LOOK = """\
@@ -33,6 +34,7 @@ lighting = "soft window light from the front-left with gentle fill"
 def no_network(monkeypatch, request):
     """No real key, no sockets. The opt-in slow test is exempt (model download)."""
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("HEADSHOT_WORKSPACE", raising=False)
     if request.node.get_closest_marker("slow"):
         return
 
@@ -53,8 +55,7 @@ def png_bytes(color=(10, 20, 30), size=(16, 16)) -> bytes:
 
 @pytest.fixture
 def project(tmp_path):
-    """A throwaway project root with synthetic (non-face) refs."""
-    shutil.copy(PROJECT / "prompt.txt", tmp_path / "prompt.txt")
+    """A throwaway workspace with synthetic (non-face) refs. prompt.txt comes from the skill."""
     (tmp_path / "look.toml").write_text(FIXTURE_LOOK)
     refs = tmp_path / "photos" / "refs"
     refs.mkdir(parents=True)
@@ -88,8 +89,13 @@ DIM = 12
 
 
 def dirs(project) -> set[Path]:
+    """Run folders under out/ (out/.gitignore is not a run)."""
     out = project / "out"
-    return set(out.iterdir()) if out.is_dir() else set()
+    return {p for p in out.iterdir() if p.is_dir()} if out.is_dir() else set()
+
+
+def runs(project) -> list[Path]:
+    return sorted(dirs(project))
 
 
 def make_run(project, *argv, client=None, expect=0) -> Path:
@@ -208,7 +214,7 @@ def rank_project(tmp_path):
 OK = ("--max-cost", "10")
 
 
-TEMPLATE = (PROJECT / "prompt.txt").read_text()
+TEMPLATE = (SKILL_DIR / "assets" / "prompt.txt").read_text()
 
 
 class FakeClient:
