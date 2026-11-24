@@ -1,18 +1,19 @@
 # headshot-agent
 
-Turns your own photos into LinkedIn headshots: an agent skill runs the OpenAI image API on them, then ranks the results locally by how much they look like you.
+LinkedIn headshots from your own photos, made by your coding agent.
 
-**Intended use: your own photos only.** See [privacy.md](skills/linkedin-headshot/references/privacy.md) for what that means and what leaves your machine.
+```sh
+npx skills add https://github.com/bcanfield/headshot-agent
+```
 
-**Install** the `linkedin-headshot` skill (the [skills/linkedin-headshot](skills/linkedin-headshot) folder):
+Then tell your agent: **"make my LinkedIn headshot"**.
 
-- Claude Code, Codex, Cursor and other agents that read skills: `npx skills add https://github.com/bcanfield/headshot-agent` (add `-g` for every project).
-- Claude Code plugin: `/plugin marketplace add https://github.com/bcanfield/headshot-agent.git`, then `/plugin install linkedin-headshot@headshot-agent`.
+It interviews you, generates candidates with OpenAI's image API, ranks them locally by how much they look like you, and asks before spending anything.
 
-**Use:** say "make my LinkedIn headshot". The skill keeps your photos and results in a workspace folder of their own (it suggests `~/Headshots`) and asks before spending anything.
+**Needs:** macOS, [uv](https://docs.astral.sh/uv/), and `export OPENAI_API_KEY=...` in your shell profile.
 
-**Needs:** macOS, [uv](https://docs.astral.sh/uv/), and an OpenAI API key in your shell profile (`export OPENAI_API_KEY=...`).
+Claude Code plugin instead: `/plugin marketplace add https://github.com/bcanfield/headshot-agent.git`, then `/plugin install linkedin-headshot@headshot-agent`.
 
-**Privacy:** only 3-4 of your photos (metadata stripped) and the prompt go to OpenAI; ranking runs on your machine. Details in [privacy.md](skills/linkedin-headshot/references/privacy.md).
+Your own photos only. 3-4 of them (metadata stripped) go to OpenAI, and nothing else leaves your machine: [privacy](skills/linkedin-headshot/references/privacy.md).
 
-**Licence:** MIT, for this repo's code and docs only. It does not cover the insightface `buffalo_l` models (non-commercial use only) or the third-party prompts that `prompt.txt` adapts (CC BY 4.0). Terms and credits are in [NOTICE.md](skills/linkedin-headshot/NOTICE.md).
+MIT licence. Model and prompt credits are in [NOTICE](skills/linkedin-headshot/NOTICE.md).
