@@ -1,0 +1,10 @@
+{image_roles}
+Generate one new professional LinkedIn headshot of this person.
+
+Identity: keep the exact facial structure, face shape, eyes, nose, mouth, ears, eyebrows, skin tone, hairline, hairstyle, apparent age and distinctive marks{marks_clause} from {ref_images}. {glasses_sentence} Keep the exact shape of the eyes, nose, lips, teeth, jaw and face; only the expression may differ from {ref_images}, as described in the Scene line. Do not beautify, slim, smooth, whiten teeth or enlarge eyes.
+
+Scene (change only these): {framing}, eye-level, looking at the camera with {expression}. Wearing {outfit}. Softly blurred {background} background. Lighting: {lighting}. Shot on an 85mm lens at f/4.
+
+Realism: real photograph, natural skin texture with visible pores and minor imperfections, natural flyaway hair; no retouching, no airbrushing, no studio-glamour polish, no stylized colour grade.
+
+Constraints: change only the expression, framing, clothing, background and lighting; keep the facial structure, skin, marks and hair exactly as in {ref_images}. No text, logos, watermark or extra people. Square 1:1 image.

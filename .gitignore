@@ -1,0 +1,13 @@
+# Personal data: never commit
+photos/
+out/
+look.toml
+
+# Python / tooling
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+.claude/settings.local.json
+.ruff_cache/

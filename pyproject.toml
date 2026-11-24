@@ -1,0 +1,36 @@
+[project]
+name = "headshot-agent"
+version = "0.1.0"
+description = "AI LinkedIn headshot pipeline: generate with OpenAI, rank locally by likeness"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+    "openai>=3",
+    "pillow>=11",
+    "pillow-heif>=1.0",
+    "numpy>=2",
+]
+
+[project.optional-dependencies]
+# insightface's pretrained buffalo_l models are non-commercial research use only;
+# the MIT licence of this repo does not cover them (see NOTICE.md).
+rank = [
+    "insightface>=2.1",
+    "onnxruntime>=1.20",
+    "scikit-image<2.2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["slow: needs the insightface model download; run with HEADSHOT_SLOW=1"]
