@@ -9,20 +9,34 @@ metadata:
 
 # LinkedIn headshot
 
-You run the whole pipeline; the human supplies photos, answers questions, approves spend and judges the results by eye. Read `references/rules.md` (spend, API key, images) before step 1: its rules hold at every step.
+You run the whole pipeline; the human supplies photos, answers questions, approves spend and judges the results by eye.
 
-`<skill-dir>` in the commands below is this skill's folder: `${CLAUDE_SKILL_DIR}`. If that still shows a `${...}` placeholder, use the absolute path of the folder that contains this SKILL.md. `<ws>` is the workspace from step 1.1: the folder that holds `photos/`, `out/` and `look.toml`. `generate.py ...` and `rank.py ...` below are short for `uv run <skill-dir>/scripts/generate.py --workspace <ws> ...` and `uv run <skill-dir>/scripts/rank.py --workspace <ws> ...`; always run the full form, with both paths absolute, because the shell's folder moves with `cd`. Relative paths in arguments and results (`out/<run>`, `photos/holdout/`) are inside `<ws>`, and every result except `--check-key` echoes `workspace`; if it differs from `<ws>`, fix the command before going on.
+## Rules
 
-Every command takes `--json`: one object on stdout with `exit_code`, plus `error` on failure. Exit codes: 0 ok, 2 input error (fix the cause), 3 needs spend approval, 4 OpenAI or unexpected failure (relay `error`; a run may have been billed). Only `generate.py --dry-run` returns a per-field `errors` map.
+These hold at every step, in this file and in `more-like.md`.
+
+- **Spend:** pass `--max-cost` only with a dollar figure the human approved in this conversation (the CLI caps it at $10). Every real OpenAI call is the human's to approve, and each approval covers one run.
+- **API key:** the secret is human-only. `generate.py --check-key` is the only way to learn about `OPENAI_API_KEY`; keep its value unread, unprinted and out of chat. When it reports the key missing, tell the human to add `export OPENAI_API_KEY=...` to their shell profile (for example `~/.zshrc`) themselves, typing the key only there, then quit the agent (for example Claude Code) and start it again. That one-time line is the only file the human edits.
+- **Images:** viewing an image sends it to the model provider, so handle `photos/` and `out/` by path and `open` them on the human's screen. The one exception: if the human opted in at intake, Read the top 3 ranked outputs of a run (only those, only after ranking) to comment on them. `photos/` stays unviewed either way.
+- **Personal data:** `photos/`, `out/` and `look.toml` in the workspace hold the human's face and choices. The scripts give `photos/` and `out/` a `.gitignore` of `*`; keep all three out of version control and out of the skill folder.
+
+## Conventions
+
+- `<skill-dir>` is this skill's folder: `${CLAUDE_SKILL_DIR}`. If that still shows a `${...}` placeholder, use the absolute path of the folder that contains this SKILL.md.
+- `<ws>` is the workspace from step 1.1: the folder that holds `photos/`, `out/` and `look.toml`. Relative paths in arguments and results (`out/<run>`, `photos/holdout/`) are inside `<ws>`.
+- `generate.py ...` and `rank.py ...` are short for `uv run <skill-dir>/scripts/generate.py --workspace <ws> ...` and `uv run <skill-dir>/scripts/rank.py --workspace <ws> ...`, here, in `more-like.md` and in the hints inside `error` and warning strings. Always run the full form, with both paths absolute, because the shell's folder moves with `cd`.
+- Every result except `--check-key` echoes `workspace`; if it differs from `<ws>`, fix the command before going on.
+- Every command takes `--json`: one object on stdout with `exit_code`, plus `error` on failure. Exit codes: 0 ok, 2 input error (fix the cause), 3 needs spend approval, 4 OpenAI or unexpected failure (relay `error`; a run may have been billed). Only `generate.py --dry-run` returns a per-field `errors` map.
+- Tools are named as in Claude Code. Elsewhere: for AskUserQuestion, ask the same question in chat as a numbered list of the same options and wait for the answer; for Bash `timeout`/`run_in_background`, run in the foreground with a timeout of at least 10 minutes; for Read, use your image-viewing tool. `open` is macOS; use `xdg-open` on Linux.
 
 ## Steps
 
 ### 1. Intake
 Done when `split` exits 0 and the human knows which photos became references, which were held back and why any were rejected.
 
-1. Pick `<ws>`. If the current folder already holds `look.toml` or `photos/`, propose it; otherwise propose `~/Headshots`, a folder outside Desktop, Documents and iCloud Drive, which can sync to the cloud. Confirm with AskUserQuestion, create it with `mkdir -p`, and keep its absolute path.
-2. Run `generate.py --check-key --json`. If `key_present` is false, give the human the API key instructions from `references/rules.md`. Continue intake meanwhile; spend waits for the key.
-3. Ask the image opt-in once, with AskUserQuestion: "No, keep my photos and results off Claude (recommended)" first, then "Yes, Claude may look at the top 3 results to comment".
+1. Pick `<ws>`. If the current folder already holds `look.toml` or `photos/`, propose it; otherwise propose `~/Headshots`: outside Desktop, Documents and iCloud Drive, which can sync to the cloud. Confirm with AskUserQuestion, create it with `mkdir -p`, and keep its absolute path.
+2. Run `generate.py --check-key --json`. If `uv` is not found, ask the human to install it (https://docs.astral.sh/uv/) and start the agent again. If `key_present` is false, give the human the instructions in the API key rule. Continue intake meanwhile; spend waits for the key.
+3. Ask the image opt-in once, with AskUserQuestion: "No, keep my photos and results off the AI model (recommended)" first, then "Yes, the AI may look at the top 3 results to comment".
 4. Find the photos. Before copying any folder into `<ws>/photos/inbox/`, ask the human to confirm that every photo in it shows only them; another person's face would be uploaded to OpenAI and blended into the result. If `photos/inbox/` already has files, list their names and count and ask whether to keep them.
 5. Run `rank.py split --json` with Bash `timeout: 600000` (the first run downloads a 289 MB face model; tell the human).
 6. Report the result in plain words: refs, holdout, and every reject with its reason.
@@ -78,12 +92,12 @@ If this dry run returns `duplicate_of` with `duplicate_finished: true`, a run wi
 Done when the human has approved a dollar ceiling, the run has finished, and the human has heard the real cost against the estimate.
 
 1. Show the dry run's `estimate_usd` range in plain words.
-2. Ask for approval with AskUserQuestion. Each run option carries its estimate and its ceiling (the upper bound rounded up to the next 10 cents), for example "4 at high: estimate $0.27-$1.73, ceiling $1.80"; add "Cancel". The question text says: "The run starts only if the estimate's upper bound is under the ceiling. OpenAI bills by tokens, so the real cost can come out higher." The CLI refuses ceilings above $10.
+2. Ask for approval with AskUserQuestion. Each run option carries its estimate and its ceiling (the upper bound rounded up to the next 10 cents), for example "4 at high: estimate $0.27-$1.73, ceiling $1.80"; add "Cancel". The question text says: "The run starts only if the estimate's upper bound is under the ceiling. OpenAI bills by tokens, so the real cost can come out higher."
 3. Run `generate.py --json --max-cost <the human's figure> -n <n> --quality <q>` with Bash `run_in_background: true`, then wait for the completion notification. A paid call can take several minutes; while it runs, leave it alone: no kill, no second run.
    Label each run with a letter in the order you make it (run A, run B, ...) and keep the label → `run_dir` mapping; the human only ever hears the label.
 4. Exit 0: report `cost_usd` against `estimate_usd` and the approved ceiling. If `over_ceiling` is true, say plainly that the real cost exceeded the ceiling and by how much. If `cost_usd` is above the estimate's upper bound, say that estimates for this kind of run come out low. If `status` is `partial`, say how many images came back unreadable (`bad_outputs`).
 5. Exit 3: the ceiling is under the upper bound. Return to the human with the estimate and take any new ceiling from them.
-6. Exit 2 with `duplicate_of`: an identical run exists or may have been billed. For a finished run, apply the duplicate rule of the step you came from (step 3, or `more-like.md` step 3). Otherwise have the human check the OpenAI usage page, and pass `--again` once they say so, under a ceiling they approve.
+6. Exit 2 with `duplicate_of`: an identical run exists or may have been billed. For a finished run, apply the duplicate rule of the step you came from (step 3, or `more-like.md` step 3). Otherwise have the human check the OpenAI usage page (https://platform.openai.com/usage), and pass `--again` once they say so, under a ceiling they approve.
 7. Exit 4: relay `error` and `request_id`. With `possibly_billed` true, ask the human to check the OpenAI usage page before any retry.
 
 ### 5. Rank and show
@@ -98,7 +112,7 @@ Done when the top candidates and one real photo are open on the human's screen a
    - "could not read" or face-count flags: that file is unscored; skip it.
    - `partial` and `bad_outputs`: some images came back unreadable and are not ranked.
    - Pass on every `warnings` entry.
-4. If the human opted in at intake, Read the top 3 output files now and add brief comments on visible flaws (hands, teeth, clothing artefacts, likeness to the brief).
+4. If the human opted in at intake, view the top 3 outputs as the Images rule allows and add brief comments on visible flaws (hands, teeth, clothing artefacts, likeness to the brief).
 5. For a `--more-like` run, also relay the pick comparison as described in `more-like.md` step 7.
 6. Ask which candidate they like, and what, if anything, to change.
 

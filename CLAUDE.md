@@ -1,6 +1,6 @@
 # headshot-agent
 
-This repo ships one agent skill, `linkedin-headshot`, in `skills/linkedin-headshot/`; that folder is all an installer copies. Whenever the human wants a headshot, run the skill (Claude Code loads it here through the `.claude/skills/linkedin-headshot` symlink); its own `references/rules.md` covers spend, the API key and images.
+This repo ships one agent skill, `linkedin-headshot`, in `skills/linkedin-headshot/`; that folder is all an installer copies. Whenever the human wants a headshot, run the skill (Claude Code loads it here through the `.claude/skills/linkedin-headshot` symlink); the Rules section of its `SKILL.md` covers spend, the API key, images and personal data.
 
 ## Contributing
 

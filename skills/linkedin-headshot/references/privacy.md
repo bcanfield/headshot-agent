@@ -1,5 +1,7 @@
 # Privacy and intended use
 
+What to tell the human when they ask what this skill does with their data. The rules the agent follows are in SKILL.md's Rules section.
+
 ## Intended use
 
 - Use it on photos of yourself, as an adult, to make headshots of yourself.
@@ -20,9 +22,7 @@
   Zero data retention needs separate approval.
 - The agent running this skill never looks at your photos. It looks at the top 3 results only if
   you opt in when asked; otherwise it opens them on your screen for you to judge.
-- Your OpenAI key goes in your shell profile (`export OPENAI_API_KEY=...`),
-  never in the chat. Restart the agent (for example Claude Code) after
-  adding it.
+- Your OpenAI key lives only in your shell profile, never in the chat.
 - `run.json` stores the prompt (including your marks text), hashes of the
   uploaded files, request id and usage. No filenames, absolute paths or keys.
 - iCloud Drive (Desktop & Documents) or employer backup agents may copy
@@ -34,5 +34,3 @@
 - The first face-ranking run downloads the insightface `buffalo_l` model
   (~289 MB from GitHub, to `~/.insightface`; no photos are sent). Its licence
   is non-commercial; see [NOTICE.md](../NOTICE.md).
-- Outputs are left as OpenAI returns them; nothing here removes provenance
-  metadata.

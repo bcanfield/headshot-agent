@@ -12,7 +12,7 @@
 #     "scikit-image<2.2",
 # ]
 # ///
-"""Photo split, pre-flight check and likeness ranking, all local. Owns insightface.
+"""Photo split, pre-flight check and likeness ranking, all local.
 
 Usage (SKILL = this skill's folder; WS = the workspace holding photos/ and out/):
     uv run SKILL/scripts/rank.py --workspace WS split      # photos/inbox -> refs + holdout
@@ -29,6 +29,8 @@ failure (for example the face-model download). Never prompts.
 
 Scores order candidates for you to judge by eye. They are not a verdict.
 """
+
+# This is the only script that imports insightface.
 
 from __future__ import annotations
 

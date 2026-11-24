@@ -1,6 +1,6 @@
 # More like this
 
-Every round after the first. `generate.py ...` and `rank.py ...` are the short forms defined at the top of SKILL.md: run the full `uv run <skill-dir>/scripts/... --workspace <ws>` form. `generate.py --more-like <run_dir>/<NN>.png` re-sends the original photos as images 1-N and the pick as one more image, labelled as a scene reference only: framing, pose, outfit, background and lighting. The face is redrawn from the photos every round, so it varies a little.
+Every round after the first. SKILL.md's Rules and Conventions (including the short forms `generate.py ...` and `rank.py ...`) hold here too. `generate.py --more-like <run_dir>/<NN>.png` re-sends the original photos as images 1-N and the pick as one more image, labelled as a scene reference only: framing, pose, outfit, background and lighting. The face is redrawn from the photos every round, so it varies a little.
 
 **Resample**: new samples of one run's look from the original photos, with no pick: `--from <run_dir>` plus any field changes, never `--more-like`. `<run_dir>` is the run of the candidate in question, so every look field the human approved so far carries over. When its dry run reports `duplicate_of` with `duplicate_finished: true` (a resample with no field change of a run made without a pick), pass `--again`: the result is new samples. Run a resample through steps 3-7 below with `--from <run_dir>` in place of `--more-like <file>`.
 
@@ -14,7 +14,7 @@ Map the human's words to your run labels and the rank rows you reported. "That",
 ### 2. Triage the feedback
 Done when the feedback sits on exactly one route below and, for route 1, you hold the exact field phrase(s).
 
-1. **Look change**: any of `outfit`, `background`, `lighting`, `framing` and `expression`, together in one round; `glasses` in a round of its own. Write each value as a full prompt-ready phrase (single line, at most 120 characters). Changes the human approved in earlier rounds stay: if the pick's run predates one (they asked "less smiley" in run D but the pick is still from run B), pass it again as an override alongside the new change.
+1. **Look change**: any of `outfit`, `background`, `lighting`, `framing` and `expression`, together in one round; `glasses` in a round of its own. Write each value as a full prompt-ready phrase (single line, at most 120 characters). Changes the human approved in earlier rounds stay: if the pick's run predates one (they asked "less smiley" in run D but the pick is still from run B), pass it again as an override alongside the new change. `marks` change only in a fresh run from look.toml (SKILL.md step 3).
 2. **Ambiguous**: two or three readings. Put them in the step 4 question as "Which did you mean?", each showing the exact phrase.
 3. **Likeness complaint** (the face, eyes, nose, teeth or smile shape look unlike them): the pick's face is part of the problem, so leave it out. If another candidate scores higher, offer it first (free). Otherwise resample the pick's run: new faces from the original photos, the same approved look.
 4. **Out of reach**: explain why, then offer the row's nearest feasible alternative as a route-1 change.
@@ -48,11 +48,11 @@ Route 4 rows share one reason: the model cannot change the face or body and keep
 ### 3. Dry run
 Done when `generate.py --dry-run --json --more-like <file> [--<field> "<phrase>" ...] -n <n> --quality <q>` (or the resample form) exits 0 for every run size you will offer.
 
-Recommend "4 at high" for a pick; when the pick's run was `low`, recommend at least medium. Dry-run each option to get its `estimate_usd`.
+Recommend "4 at high" for a pick, and never below medium, even when the pick's run was `low`. Dry-run each option to get its `estimate_usd`.
 
 Read the output:
 - `depth_warning` (a pick of a pick): the pick passed the drift gate, so keep it and recommend the `--more-like` run. A resample of the pick's run may be one more option, never the recommended one.
-- `duplicate_of` with `duplicate_finished: true`: those images already exist. For a route 3 resample, add `--again` without asking. Otherwise tell the human in plain text, before the question, that you can reopen them for free, and make each paid option an `--again` one labelled "new samples".
+- `duplicate_of` with `duplicate_finished: true`: those images already exist. For a resample, add `--again` without asking (the human asked for new samples). For a `--more-like` run, tell the human in plain text, before the question, that you can reopen them for free, and make each paid option an `--again` one labelled "new samples".
 - Exit 2 explains itself in `error`. The common ones:
   - "rank first" or "re-rank" (`stale_rankings`): run `rank.py rank out/<run> --json` for each run named, then retry. Rankings move with the held-back photos, so a stale one is redone, never reused.
   - "drifted" (with `pick_score` and `root_median`): the pick's face has moved away from the human's photos. Say so, and offer a resample of the pick's run with the same field change.
@@ -69,8 +69,6 @@ Ask one AskUserQuestion with up to 3 questions, each with at most 4 options:
 3. "Run size": options in the SKILL.md step 4.2 format, for example "4 at high: estimate $0.27-$1.89, ceiling $1.90 (recommended for a pick)" / "2 at medium: estimate $0.10-$0.68, ceiling $0.70" / "Cancel". With a depth or duplicate option to add, drop "2 at medium" first.
 
 The question text restates the pick ("run B, 03.png, ranked 2nd"), the exact field phrase(s), SKILL.md step 4.2's cost sentence, and: "I'll keep its framing, outfit, background and light. Your face is redrawn from your own photos each time, so it will vary a little." For a resample, say instead that the look stays and every image is new. If the human loves the pick's face itself, recommend keeping that file rather than paying for more.
-
-The approval covers this one run only.
 
 ### 5. Run
 Done when the paid run has finished and the human has heard the real cost against the estimate.

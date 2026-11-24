@@ -15,7 +15,7 @@ Usage (SKILL = this skill's folder; WS = the workspace holding photos/, out/ and
     uv run SKILL/scripts/generate.py --workspace WS --json --max-cost 1.50   # real run, only if
                                                           # the estimate's upper bound <= 1.50
     ... --from out/<ts> --background "light blue" --max-cost 1.50
-    ... --more-like out/<ts>/02.png --max-cost 1.50   # resample a pick
+    ... --more-like out/<ts>/02.png --max-cost 1.50   # more like a picked output
 
 --workspace defaults to $HEADSHOT_WORKSPACE, then the current folder; the skill
 folder itself, / and $HOME are refused. Relative paths resolve against it.
@@ -24,9 +24,9 @@ Exit codes: 0 ok, 2 user/input error, 3 needs spend approval (pass --max-cost),
 4 OpenAI API error or unexpected failure. With --json, one JSON object goes to
 stdout (with "error" and "exit_code" on failure) and human text to stderr;
 nothing ever prompts. --max-cost must be a number above 0 and at most $10.
-
-Must not import insightface (see rank.py).
 """
+
+# Must not import insightface (see rank.py).
 
 from __future__ import annotations
 
@@ -531,7 +531,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--more-like",
         metavar="OUT_DIR/NN.png",
-        help="resample a picked output: implies --from its run; the pick is sent after "
+        help="more like a picked output: implies --from its run; the pick is sent after "
         "the original photos as a scene reference only (the run must be ranked)",
     )
     p.add_argument(
@@ -570,7 +570,7 @@ def check_key(as_json: bool) -> int:
     if not present:
         return fail(
             2,
-            "OPENAI_API_KEY is not set in the environment Claude Code was started from",
+            "OPENAI_API_KEY is not set in the environment the agent was started from",
             as_json,
             key_present=False,
         )
