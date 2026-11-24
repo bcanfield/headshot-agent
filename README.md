@@ -14,6 +14,6 @@ It interviews you, generates candidates with OpenAI's image API, ranks them loca
 
 Claude Code plugin instead: `/plugin marketplace add https://github.com/bcanfield/headshot-agent.git`, then `/plugin install linkedin-headshot@headshot-agent`.
 
-Your own photos only. 3-4 of them (metadata stripped) go to OpenAI, and nothing else leaves your machine: [privacy](skills/linkedin-headshot/references/privacy.md).
+Your own photos only. OpenAI receives 3-4 of them (metadata stripped), the prompt, and any candidate you ask for "more like"; everything else stays local. Details: [privacy](skills/linkedin-headshot/references/privacy.md).
 
 MIT licence. Model and prompt credits are in [NOTICE](skills/linkedin-headshot/NOTICE.md).
